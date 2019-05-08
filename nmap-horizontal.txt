@@ -3,11 +3,11 @@ Made by dev.cmsantos (dev.cmsantos@gmail.com)
 MIT License, use at your own risk.
 This file allows to use horizontal analysis with NMAP, by fixing a port then testing each and every IP address, in order to avoid calling attention of an IPS system.
 
-nmap-horizontal ip [-efs] [args]"
+nmap-horizontal ip [-efps] [args]"
 	ip is for a range of IPs, so for instance 192.168.10, then this script will hover over from 1 to 255."
     
-	middle argument is to include defined ranges, if you wish to start, let's say, from 30 to 100. Then, you'd type -s 30 -e 100. -f if you want to filter undesired IP address, like gateways (let's say 192.168.10.2 or 192.168.10.255). For such, it will look for a filter file on this very folder, and on each line it will look for IP addresses that won't be checked by this tool."
+	middle arguments are optional. They are meant to include defined ranges, if you wish to start, let's say, from 30 to 100, or on ports 80 and 445. Then, you'd type -s 30 -e 100 -p PORTS.txt, considering PORTS.txt file will contain lines \"80\" and \"445\". -f if you want to filter undesired IP address, like gateways (let's say 192.168.10.2 or 192.168.10.255). For such, it will look for a filter file on this very folder, and on each line it will look for IP addresses that won't be checked by this tool."
 	
-	args is optional. It is for anything extra you want NMAP to do like "script smb-os-discovery script-args vulns.short"
+	args is optional too. It is for anything extra you want NMAP to do like "script smb-os-discovery script-args vulns.short"
 
-EXAMPLE: nmap-horizontal 10.20.30 -s 50 -e 70 -f nmap-filter.txt script smb-os-discovery script-args vulns.short
+EXAMPLE: nmap-horizontal 10.20.30 -s 50 -e 70 -f nmap-filter.txt -p ports.txt script smb-os-discovery script-args vulns.short
