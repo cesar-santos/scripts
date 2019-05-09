@@ -10,7 +10,7 @@ stay-alive()
 {
         while true
         do
-                ping -c 1 $DNS
+                ping -c 1 $DNS > /dev/null 2>&1
                 sleep $TIME
         done
 }
