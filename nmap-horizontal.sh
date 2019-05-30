@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# HINT
+#
+# For an IP filter file, you may want to scan only a few IPs. So, it may work better to generate a HUGE list of IPs
+# and then removing manually the ones you wanna scan.
+#
+# For such, this command may serve:
+#     for i in $(seq 0 255) ; do echo "192.168.10.$i" >> nmap_filter_file.txt ; done
+#
+# Adapt it at your own will.
+
+
 # Constants
 FIRST_IP=1
 LAST_IP=255
@@ -20,14 +31,14 @@ args=""
 # Help function
 help()
 {
-    echo ""
-    echo "    nmap-horizontal ip [-efsp] [args]"
-    echo "        ip is for a range of IPs, so for instance 192.168.10, then this script will hover over from 1 to 255."
-    echo ""
+	echo ""
+	echo "    nmap-horizontal ip [-efsp] [args]"
+	echo "        ip is for a range of IPs, so for instance 192.168.10, then this script will hover over from 1 to 255."
+	echo ""
 	echo "        middle arguments are optional. They are meant to include defined ranges, if you wish to start, let's say, from 30 to 100, or on ports 80 and 445. Then, you'd type -s 30 -e 100 -p PORTS.txt, considering PORTS.txt file will contain lines \"80\" and \"445\". -f if you want to filter undesired IP address, like gateways (let's say 192.168.10.2 or 192.168.10.255). For such, it will look for a filter file on this very folder, and on each line it will look for IP addresses that won't be checked by this tool."
 	echo ""
-    echo "        args is optional too. It is for anything extra you want NMAP to do like \"script smb-os-discovery script-args vulns.short\""
-    echo ""
+	echo "        args is optional too. It is for anything extra you want NMAP to do like \"script smb-os-discovery script-args vulns.short\""
+	echo ""
 	echo "    EXAMPLE: nmap-horizontal 10.20.30 -s 50 -e 70 -f nmap-filter.txt -p ports.txt script smb-os-discovery script-args vulns.short"
 	echo ""
 }
@@ -81,18 +92,14 @@ nmap-check()
 
 do-nmap()
 {
-	echo "nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip $args | tee -a $LOG_FOLDER/log_$DATE.txt"
-	nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip $args | tee -a $LOG_FOLDER/log_$DATE.txt
+	#echo "nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip $args | tee -a $LOG_FOLDER/log_$DATE.txt"
+	nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip -D10.3.1.11,10.3.1.12 $args | tee -a $LOG_FOLDER/log_$DATE.txt
 }
 
 nmap-no-filters()
 {
-    echo $filter_ports
-	read
     for port in `cat $filter_ports`
     do
-		echo $port
-		read
         for ip in $(seq $start_ip $end_ip)
         do
             do-nmap
@@ -106,7 +113,7 @@ nmap-filtered()
 	ignore=""
 
 	# Loop through ports
-	for port in `cat $filter_ports`
+	for port in $(cat $filter_ports)
 	do
 		# Loop through IP addresses
 		for ip in $(seq $start_ip $end_ip)
@@ -203,13 +210,6 @@ then
 			fi
 		fi
 	done
-	
-	# Make sure IP addresses are possible
-	if [ $start_ip -gt $end_ip ]
-	then
-		help
-		exit
-	fi
 fi
 echo -n "."
 
@@ -221,6 +221,14 @@ fi
 if test -z $end_ip
 then
 	end_ip=$LAST_IP
+fi
+echo -n "."
+
+# Make sure IP addresses are possible
+if [ $start_ip -gt $end_ip ]
+then
+	help
+	exit
 fi
 echo -n "."
 
