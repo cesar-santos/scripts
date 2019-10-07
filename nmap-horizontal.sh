@@ -1,21 +1,14 @@
 #!/bin/bash
 
-# HINT
-#
-# For an IP filter file, you may want to scan only a few IPs. So, it may work better to generate a HUGE list of IPs
-# and then removing manually the ones you wanna scan.
-#
-# For such, this command may serve:
-#     for i in $(seq 0 255) ; do echo "192.168.10.$i" >> nmap_filter_file.txt ; done
-#
-# Adapt it at your own will.
-
-
 # Constants
+INTERNET_IP="8.8.8.8"
 FIRST_IP=1
 LAST_IP=255
 FIRST_PORT=1
 LAST_PORT=65535
+CONN_TRIES=3
+SLEEP_TIME=10
+REDIRECT="/dev/null"
 FILTER_FILE="/tmp/ports.txt"
 LOG_FOLDER="nmap_logs"
 DATE=$(date +%s)
@@ -31,14 +24,14 @@ args=""
 # Help function
 help()
 {
-	echo ""
-	echo "    nmap-horizontal ip [-efsp] [args]"
-	echo "        ip is for a range of IPs, so for instance 192.168.10, then this script will hover over from 1 to 255."
-	echo ""
+    echo ""
+    echo "    nmap-horizontal ip [-efsp] [args]"
+    echo "        ip is for a range of IPs, so for instance 192.168.10, then this script will hover over from 1 to 255."
+    echo ""
 	echo "        middle arguments are optional. They are meant to include defined ranges, if you wish to start, let's say, from 30 to 100, or on ports 80 and 445. Then, you'd type -s 30 -e 100 -p PORTS.txt, considering PORTS.txt file will contain lines \"80\" and \"445\". -f if you want to filter undesired IP address, like gateways (let's say 192.168.10.2 or 192.168.10.255). For such, it will look for a filter file on this very folder, and on each line it will look for IP addresses that won't be checked by this tool."
 	echo ""
-	echo "        args is optional too. It is for anything extra you want NMAP to do like \"script smb-os-discovery script-args vulns.short\""
-	echo ""
+    echo "        args is optional too. It is for anything extra you want NMAP to do like \"script smb-os-discovery script-args vulns.short\""
+    echo ""
 	echo "    EXAMPLE: nmap-horizontal 10.20.30 -s 50 -e 70 -f nmap-filter.txt -p ports.txt script smb-os-discovery script-args vulns.short"
 	echo ""
 }
@@ -90,10 +83,49 @@ nmap-check()
     fi
 }
 
+verify-connection()
+{
+	ping -c 1 $INTERNET_IP &> $REDIRECT
+	if [[ $? != "0" ]]
+	then
+		while true
+		do
+			ping -c $CONN_TRIES $INTERNET_IP &> $REDIRECT
+			if [[ $? != "0" ]]
+			then
+				# Note to user
+				echo "No connection to the internet. Waiting to restore connection"
+				sleep $SLEEP_TIME
+			else
+				break
+			fi
+		done
+		verify-connection
+	else
+		ping -c 1 $ip_range.$start_ip &> $REDIRECT
+		if [[ $? != "0" ]]
+		then
+			while true
+			do
+				ping -c $CONN_TRIES $ip_range.$start_ip &> $REDIRECT
+				if [[ $? != "0" ]]
+				then
+					# Note to user
+					echo "Connection to the network lost. Waiting to restore connection"
+					sleep $SLEEP_TIME
+				else
+					break
+				fi
+			done
+		fi
+	fi
+}
+
 do-nmap()
 {
+	verify-connection
 	#echo "nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip $args | tee -a $LOG_FOLDER/log_$DATE.txt"
-	nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip -D10.3.1.11,10.3.1.12 $args | tee -a $LOG_FOLDER/log_$DATE.txt
+	nmap -v -n -Pn -sS -sV -p $port $ip_range.$ip $args | tee -a $LOG_FOLDER/log_$DATE.txt
 }
 
 nmap-no-filters()
@@ -113,7 +145,7 @@ nmap-filtered()
 	ignore=""
 
 	# Loop through ports
-	for port in $(cat $filter_ports)
+	for port in `cat $filter_ports`
 	do
 		# Loop through IP addresses
 		for ip in $(seq $start_ip $end_ip)
@@ -210,6 +242,13 @@ then
 			fi
 		fi
 	done
+
+	# Make sure IP addresses are possible
+	if [ $start_ip -gt $end_ip ]
+	then
+		help
+		exit
+	fi
 fi
 echo -n "."
 
@@ -221,14 +260,6 @@ fi
 if test -z $end_ip
 then
 	end_ip=$LAST_IP
-fi
-echo -n "."
-
-# Make sure IP addresses are possible
-if [ $start_ip -gt $end_ip ]
-then
-	help
-	exit
 fi
 echo -n "."
 
